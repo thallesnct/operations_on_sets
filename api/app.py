@@ -17,8 +17,10 @@ def format_set():
 @app.route("/calculate", methods=['POST'])
 def calculate():
     data = request.get_json()
-
+    
     set_expression = data["set"]
+
+    print(set_expression)
 
     result = None
     result_as_string = None
@@ -45,6 +47,15 @@ def calculate():
         result = [el for el in functions.powerset(set_list)]
         print(result)
         result_as_string = functions.transform_set_list_to_string(result)
+    elif (set_expression.__contains__(" X ")):
+        [first, second] = set_expression.split(" X ")
+        [first, second] = [functions.transform_string_to_set(first), functions.transform_string_to_set(second)]
+        result = []
+        for el_f in first:
+            for el_s in second:
+                result.append((el_f, el_s))
+        result_as_string = functions.transform_set_list_to_string(result)
+
 
 
     return jsonify({ 'result': result_as_string, 'result_as_list': str(result), 'result_cardinality': len(result) })

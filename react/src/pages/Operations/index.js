@@ -16,19 +16,16 @@ import { Flex } from '../../components/Flex';
 const api = apiService('http://localhost:5000');
 
 export default function Operations() {
-  const userSetsDefault = localStorage.getItem('userSets')
-    ? JSON.parse(localStorage.getItem('userSets'))
-    : [];
-
-  const universalSetDefault = localStorage.getItem('universalSet')
-    ? JSON.parse(localStorage.getItem('universalSet'))
-    : [];
+  const [firstSet, setFirstSet] = useState('');
+  const [secondSet, setSecondSet] = useState('');
+  const [type, setType] = useState('');
+  const [shouldAskInput, setShouldAskInput] = useState(false);
 
   const [amountOfSets, setAmountOfSets] = useState(4);
   const [currentSet, setCurrentSet] = useState('{ 1, 2, (1, 2), (1, 2, (1)) }');
-  const [userSets, setUserSets] = useState(userSetsDefault);
-  const [sets, setSets] = useState(userSetsDefault);
-  const [universalSet, setUniversalSet] = useState(universalSetDefault);
+  const [userSets, setUserSets] = useState([]);
+  const [sets, setSets] = useState([]);
+  const [universalSet, setUniversalSet] = useState([]);
 
   const defineAmountOfSets = ({ target }) => {
     const number = Math.floor(Number(target.value));
@@ -77,10 +74,6 @@ export default function Operations() {
     }
 
     setUniversalSet(formatSetObject(response.data));
-    localStorage.setItem(
-      'universalSet',
-      JSON.stringify(formatSetObject(response.data))
-    );
   };
 
   const formatSetObject = data =>
@@ -120,10 +113,6 @@ export default function Operations() {
       setUserSets([...userSets, setObject]);
       setSets([...userSets, setObject]);
       updateUniversalSet([...userSets, setObject]);
-      localStorage.setItem(
-        'userSets',
-        JSON.stringify([...userSets, setObject])
-      );
     }
   };
 
@@ -137,28 +126,27 @@ export default function Operations() {
     }
   };
 
-  const handleOperationAdd = async (type, ...targets) => {
+  const handleOperationAdd = async e => {
+    e.preventDefault();
+
     let alias, setDefinition;
 
-    if (targets.length === 2) {
-      alias = `${targets[0]} ${type} ${targets[1]}`;
-      setDefinition = `${
-        userSets[targets[0].charCodeAt(0) - 65].value
-      } ${type} ${userSets[targets[1].charCodeAt(0) - 65].value}`;
+    const has2Sets = !"P'".includes(type);
+
+    if (has2Sets) {
+      alias = `${firstSet} ${type} ${secondSet}`;
+      setDefinition = `${userSets[firstSet.charCodeAt(0) - 65].value} ${type} ${
+        userSets[secondSet.charCodeAt(0) - 65].value
+      }`;
     } else if (type === "'") {
-      alias = `${targets[0]}'`;
+      alias = `${firstSet}'`;
       setDefinition = `${universalSet.value} - ${
-        userSets[targets[0].charCodeAt(0) - 65].value
+        userSets[firstSet.charCodeAt(0) - 65].value
       }`;
     } else {
-      alias = `P(${targets[0]})`;
-      setDefinition = `P(${userSets[targets[0].charCodeAt(0) - 65].value})`;
+      alias = `P(${firstSet})`;
+      setDefinition = `P(${userSets[firstSet.charCodeAt(0) - 65].value})`;
     }
-
-    console.log({
-      alias,
-      setDefinition,
-    });
 
     const response = await api.post('/calculate', {
       set: setDefinition,
@@ -170,10 +158,26 @@ export default function Operations() {
     }
 
     setSets([...sets, formatSetObject({ alias, ...response.data })]);
-    console.log([...sets, formatSetObject(response.data)]);
   };
 
-  // "{1,2,3,4,5,{1,2},{1,3}, a}"
+  const lockSet = (position, value) => {
+    if (value.length > 1) {
+      toast.error('Valor inválido');
+      if (position === 'f') {
+        setFirstSet('');
+      } else {
+        setSecondSet('');
+      }
+
+      return;
+    }
+
+    if (position === 'f') {
+      setFirstSet(String.prototype.toUpperCase.apply(value));
+    } else {
+      setSecondSet(String.prototype.toUpperCase.apply(value));
+    }
+  };
 
   return (
     <Container>
@@ -197,28 +201,72 @@ export default function Operations() {
       <OperationsSet>
         <Button
           borderradius="2px"
-          onClick={e => handleOperationAdd('U', 'A', 'C')}
+          onClick={e => {
+            setType('U');
+            setShouldAskInput(true);
+          }}
         >
           União
         </Button>
         <Button
           borderradius="2px"
-          onClick={e => handleOperationAdd('∩', 'A', 'C')}
+          onClick={e => {
+            setType('∩');
+            setShouldAskInput(true);
+          }}
         >
           Interseção
         </Button>
-        <Button borderradius="2px" onClick={e => handleOperationAdd("'", 'A')}>
+        <Button
+          borderradius="2px"
+          onClick={e => {
+            setType("'");
+            setShouldAskInput(true);
+          }}
+        >
           Complementar
         </Button>
         <Button
           borderradius="2px"
-          onClick={e => handleOperationAdd('-', 'A', 'C')}
+          onClick={e => {
+            setType('-');
+            setShouldAskInput(true);
+          }}
         >
           Diferença
         </Button>
-        <Button borderradius="2px" onClick={e => handleOperationAdd('P', 'A')}>
+        <Button
+          borderradius="2px"
+          onClick={e => {
+            setType('P');
+            setShouldAskInput(true);
+          }}
+        >
           Conjunto das Partes
         </Button>
+
+        {shouldAskInput && (
+          <form>
+            <Input
+              margin="0 0 1rem"
+              onChange={el => lockSet('f', el.target.value)}
+              value={firstSet}
+            />
+            {!"P'".includes(type) && (
+              <Input
+                margin="0 0 1rem"
+                onChange={el => lockSet('s', el.target.value)}
+                value={secondSet}
+              />
+            )}
+            <Button
+              backgroundcolor={'#e91e63'}
+              onClick={e => handleOperationAdd(e)}
+            >
+              Calcular
+            </Button>
+          </form>
+        )}
       </OperationsSet>
       <Result>
         {universalSet && universalSet.string && (

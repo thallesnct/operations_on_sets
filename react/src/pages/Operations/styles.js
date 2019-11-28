@@ -51,6 +51,9 @@ export const Input = styled.input`
   font-size: 16px;
   padding: 0.4rem 0.8rem;
   text-align: center;
+  width: ${props => props.width || '100%'};
+  margin: ${props => props.margin || 'unset'};
+  font-size: ${props => props.fontsize || 'inherit'};
 `;
 
 export const Button = styled.button`
